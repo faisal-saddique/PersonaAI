@@ -9,9 +9,10 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 
 model User {
   id        Int      @id @default(autoincrement())
@@ -25,4 +26,45 @@ model User {
 enum UserType {
   user
   admin
+}
+
+model PersonaProfile {
+  id                  Int      @id @default(autoincrement())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  avatar              String?
+
+  // Basic Information
+  fullName            String
+  age                 Int
+  residence           String
+  passion             String
+
+  // Personality & Traits
+  characterTraits     String[] // Stored as array
+  otherTrait          String?
+  roleModel           String?
+  personalValues      String
+
+  // Skills & Experience
+  expertise           String
+  experienceLevel     String
+  achievements        String
+  dailyRoutine        String
+
+  // Challenges & Growth
+  obstacles           String
+  overcomingChallenges String
+  handlingPressure    String
+
+  // Future Goals & Aspirations
+  tenYearVision       String
+  fieldChange         String
+  bestAdvice          String
+
+  // Conversation Starters
+  conversationStarter1 String
+  conversationStarter2 String?
+  conversationStarter3 String?
+  conversationStarter4 String?
 }

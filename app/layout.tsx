@@ -5,6 +5,7 @@ import "./globals.css"
 import cx from "../utils/cx"
 import SidebarLayout from "../components/SidebarLayout"
 import { CharacterProvider } from "../contexts/CharacterContext"
+import AuthProvider from "../providers/AuthProvider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -21,11 +22,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth antialiased">
       <body className={cx(inter.className, "text-sm md:text-base bg-body")}>
-        <CharacterProvider>
-          <SidebarLayout>{children}</SidebarLayout>
-        </CharacterProvider>
+        <AuthProvider>
+          <CharacterProvider>
+            <SidebarLayout>{children}</SidebarLayout>
+          </CharacterProvider>
+        </AuthProvider>
       </body>
     </html>
   )
 }
-

@@ -4,33 +4,23 @@ import React, { useEffect, useRef, useState } from "react"
 import Sidebar from "./Sidebar"
 import cx from "../utils/cx"
 import { PanelLeftOpen } from "lucide-react"
-import LoginModal from "./login-modal"
-import type { UserRole } from "../utils/users"
+import { useSession } from "next-auth/react"
+import { usePathname, useRouter } from "next/navigation"
 
 interface SidebarLayoutProps {
   children: React.ReactNode
-  requiredRole?: UserRole
 }
 
-export default function SidebarLayout({ children, requiredRole = "user" }: SidebarLayoutProps) {
+export default function SidebarLayout({ children }: SidebarLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false)
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
-  const [userRole, setUserRole] = useState<UserRole | undefined>(undefined)
+  const { data: session, status } = useSession()
+  const isLoading = status === "loading"
+  const router = useRouter()
+  const pathname = usePathname()
 
   const mainContentRef = useRef<HTMLDivElement>(null)
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev)
-
-  // Check if user is already logged in
-  useEffect(() => {
-    const loggedInStatus = sessionStorage.getItem("PersonaAI_logged_in")
-    const storedRole = sessionStorage.getItem("PersonaAI_user_role") as UserRole | null
-
-    if (loggedInStatus === "true" && storedRole) {
-      setIsLoggedIn(true)
-      setUserRole(storedRole)
-    }
-  }, [])
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -66,28 +56,37 @@ export default function SidebarLayout({ children, requiredRole = "user" }: Sideb
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  const handleLogin = (success: boolean, role?: UserRole) => {
-    if (success && role) {
-      setIsLoggedIn(true)
-      setUserRole(role)
-      sessionStorage.setItem("PersonaAI_logged_in", "true")
-      sessionStorage.setItem("PersonaAI_user_role", role)
-    }
+  // Check if admin is trying to access admin page
+  const isAdmin = session?.user?.role === "admin"
+  const isAdminRoute = pathname.startsWith("/admin")
+  const isAuthorized = !isAdminRoute || (isAdminRoute && isAdmin)
+
+  if (pathname !== "/login" && !isLoading && !session) {
+    // If not on login page and not logged in, this should be handled by middleware
+    return null
   }
 
-  // Check if user has required role
-  const hasRequiredRole = userRole === requiredRole || (requiredRole === "user" && userRole === "admin")
-  const shouldShowLoginModal = !isLoggedIn || !hasRequiredRole
+  // When logged in but trying to access login page
+  if (pathname === "/login" && session) {
+    router.push("/")
+    return null
+  }
 
   return (
     <div className="relative min-h-screen md:flex">
-      <LoginModal isOpen={shouldShowLoginModal} onLogin={handleLogin} requiredRole={requiredRole} />
-
-      {/* Sidebar component - Only render if logged in or hidden by CSS */}
-      <Sidebar isOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} isDisabled={shouldShowLoginModal} />
+      {/* Sidebar component */}
+      {session && (
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onToggleSidebar={toggleSidebar} 
+          isDisabled={false}
+          userRole={session.user?.role}
+          userName={session.user?.name || "User"}
+        />
+      )}
 
       {/* Mobile-only toggle button when sidebar is closed */}
-      {!isSidebarOpen && isLoggedIn && hasRequiredRole && (
+      {!isSidebarOpen && session && (
         <button
           onClick={toggleSidebar}
           className="fixed left-0 top-0 p-2 bg-primary/10 text-primary z-20 md:hidden"
@@ -102,17 +101,16 @@ export default function SidebarLayout({ children, requiredRole = "user" }: Sideb
         ref={mainContentRef}
         className={cx(
           "flex-1 transition-all duration-300 ease-in-out flex flex-col items-center min-h-screen",
-          isSidebarOpen ? "md:ml-80" : "md:ml-14",
-          shouldShowLoginModal ? "blur-sm pointer-events-none" : "",
+          isSidebarOpen && session ? "md:ml-80" : "md:ml-14",
+          isLoading ? "blur-sm pointer-events-none" : "",
         )}
       >
         {React.cloneElement(children as React.ReactElement, {
           isSidebarOpen, // Pass the sidebar state to children
-          isLoggedIn,
-          userRole,
+          isLoggedIn: !!session,
+          userRole: session?.user?.role,
         })}
       </div>
     </div>
   )
 }
-

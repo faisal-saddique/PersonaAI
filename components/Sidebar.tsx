@@ -4,15 +4,27 @@ import cx from "../utils/cx"
 import { useCharacter } from "../contexts/CharacterContext"
 import { CharacterModal } from "./character-modal"
 import "./style.css"
-import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, MessageSquare, Star, Info, RefreshCw } from "lucide-react"
+import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, MessageSquare, 
+         Star, Info, RefreshCw, LogOut, Settings, User as UserIcon } from "lucide-react"
+import { signOut } from "next-auth/react"
+import Link from "next/link"
+import type { UserType } from "@prisma/client"
 
 interface SidebarProps {
   isOpen: boolean
   onToggleSidebar: () => void
   isDisabled?: boolean
+  userRole?: UserType
+  userName?: string
 }
 
-export default function Sidebar({ isOpen, onToggleSidebar, isDisabled = false }: SidebarProps) {
+export default function Sidebar({ 
+  isOpen, 
+  onToggleSidebar, 
+  isDisabled = false,
+  userRole,
+  userName = "User"
+}: SidebarProps) {
   const {
     selectedCharacter,
     setSelectedCharacter,
@@ -25,15 +37,20 @@ export default function Sidebar({ isOpen, onToggleSidebar, isDisabled = false }:
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [dropdownFocus, setDropdownFocus] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"info" | "starters">("info")
 
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false)
         setDropdownFocus(false)
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false)
       }
     }
 
@@ -56,6 +73,10 @@ export default function Sidebar({ isOpen, onToggleSidebar, isDisabled = false }:
     await refreshCharacters()
   }
 
+  const handleLogout = () => {
+    signOut({ callbackUrl: "/login" })
+  }
+
   const sidebarClasses = cx(
     "fixed left-0 top-0 h-full bg-card border-r border-border z-[1000]",
     "transition-all duration-300 ease-in-out overflow-y-auto custom-scrollbar",
@@ -67,17 +88,55 @@ export default function Sidebar({ isOpen, onToggleSidebar, isDisabled = false }:
   return (
     <aside className={sidebarClasses}>
       {/* Toggle Button */}
-      <button
-        onClick={onToggleSidebar}
-        className="m-2 p-2 bg-muted hover:bg-primary/10 text-foreground rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
-        aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
-      >
-        {isOpen ? (
-          <PanelLeftClose className="text-foreground" size={20} />
-        ) : (
-          <PanelLeftOpen className="text-foreground" size={20} />
+      <div className="flex items-center justify-between p-2">
+        <button
+          onClick={onToggleSidebar}
+          className="p-2 bg-muted hover:bg-primary/10 text-foreground rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
+          aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
+        >
+          {isOpen ? (
+            <PanelLeftClose className="text-foreground" size={20} />
+          ) : (
+            <PanelLeftOpen className="text-foreground" size={20} />
+          )}
+        </button>
+
+        {isOpen && (
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className="flex items-center space-x-2 p-2 hover:bg-muted rounded-lg transition-colors"
+            >
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                <UserIcon size={16} />
+              </div>
+              <span className="text-sm font-medium">{userName}</span>
+              <ChevronDown size={16} className={cx(isUserMenuOpen && "transform rotate-180")} />
+            </button>
+
+            {/* User dropdown menu */}
+            {isUserMenuOpen && (
+              <div className="absolute right-0 mt-1 w-48 rounded-md bg-card shadow-lg z-10 border border-border animate-fade-in">
+                <div className="py-1">
+                  {userRole === "admin" && (
+                    <Link href="/admin" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted">
+                      <Settings size={16} className="mr-2" />
+                      Admin Dashboard
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
+                  >
+                    <LogOut size={16} className="mr-2" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
-      </button>
+      </div>
 
       {/* If open, show content */}
       {isOpen && (

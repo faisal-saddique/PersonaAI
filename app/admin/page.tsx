@@ -4,7 +4,8 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Shield, AlertTriangle } from "lucide-react"
-import AdminTabs from "@/components/adminTabs"
+import AdminTabs from "@/components/AdminTabs"
+
 
 
 export default function AdminPage() {

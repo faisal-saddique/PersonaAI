@@ -6,6 +6,7 @@ import cx from "../utils/cx"
 import { PanelLeftOpen } from "lucide-react"
 import LoginModal from "./login-modal"
 import type { UserRole } from "../utils/users"
+import { useSession } from "next-auth/react"
 
 interface SidebarLayoutProps {
   children: React.ReactNode
@@ -14,23 +15,34 @@ interface SidebarLayoutProps {
 
 export default function SidebarLayout({ children, requiredRole = "user" }: SidebarLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false)
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
   const [userRole, setUserRole] = useState<UserRole | undefined>(undefined)
-
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false)
+  const { data: session, status } = useSession()
+  
   const mainContentRef = useRef<HTMLDivElement>(null)
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev)
 
-  // Check if user is already logged in
+  // Check if user is already logged in using Next Auth
   useEffect(() => {
-    const loggedInStatus = sessionStorage.getItem("PersonaAI_logged_in")
-    const storedRole = sessionStorage.getItem("PersonaAI_user_role") as UserRole | null
-
-    if (loggedInStatus === "true" && storedRole) {
-      setIsLoggedIn(true)
-      setUserRole(storedRole)
+    // Determine if user needs to be shown login modal based on session status
+    if (status === 'loading') return;
+    
+    // Show login modal if not authenticated
+    if (status === 'unauthenticated') {
+      setShowLoginModal(true);
+      return;
     }
-  }, [])
+    
+    // User is authenticated
+    if (session?.user) {
+      // For now we'll use a simple role determination
+      // In a real app, you'd store the role in the session
+      const role = session.user.email?.includes('admin') ? 'admin' : 'user';
+      setUserRole(role);
+      setShowLoginModal(false);
+    }
+  }, [session, status, requiredRole]);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -68,26 +80,33 @@ export default function SidebarLayout({ children, requiredRole = "user" }: Sideb
 
   const handleLogin = (success: boolean, role?: UserRole) => {
     if (success && role) {
-      setIsLoggedIn(true)
       setUserRole(role)
-      sessionStorage.setItem("PersonaAI_logged_in", "true")
-      sessionStorage.setItem("PersonaAI_user_role", role)
+      setShowLoginModal(false)
     }
   }
 
   // Check if user has required role
   const hasRequiredRole = userRole === requiredRole || (requiredRole === "user" && userRole === "admin")
-  const shouldShowLoginModal = !isLoggedIn || !hasRequiredRole
+  const isAuthenticated = status === 'authenticated'
+  const shouldShowLoginModal = showLoginModal || !isAuthenticated || !hasRequiredRole
 
   return (
     <div className="relative min-h-screen md:flex">
-      <LoginModal isOpen={shouldShowLoginModal} onLogin={handleLogin} requiredRole={requiredRole} />
+      <LoginModal 
+        isOpen={shouldShowLoginModal} 
+        onLogin={handleLogin} 
+        requiredRole={requiredRole} 
+      />
 
       {/* Sidebar component - Only render if logged in or hidden by CSS */}
-      <Sidebar isOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} isDisabled={shouldShowLoginModal} />
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onToggleSidebar={toggleSidebar} 
+        isDisabled={shouldShowLoginModal} 
+      />
 
       {/* Mobile-only toggle button when sidebar is closed */}
-      {!isSidebarOpen && isLoggedIn && hasRequiredRole && (
+      {!isSidebarOpen && isAuthenticated && hasRequiredRole && (
         <button
           onClick={toggleSidebar}
           className="fixed left-0 top-0 p-2 bg-primary/10 text-primary z-20 md:hidden"
@@ -108,11 +127,10 @@ export default function SidebarLayout({ children, requiredRole = "user" }: Sideb
       >
         {React.cloneElement(children as React.ReactElement, {
           isSidebarOpen, // Pass the sidebar state to children
-          isLoggedIn,
+          isLoggedIn: isAuthenticated,
           userRole,
         })}
       </div>
     </div>
   )
 }
-

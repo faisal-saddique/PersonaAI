@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/authOptions'
+
+// Helper function to check admin authorization
+async function isAuthorized() {
+  const session = await getServerSession(authOptions)
+  return session?.user?.role === 'admin'
+}
 
 export async function PUT(request: NextRequest) {
   try {
+    // Check if user is authorized
+    const authorized = await isAuthorized()
+    if (!authorized) {
+      return NextResponse.json({
+        success: false,
+        error: 'Unauthorized access'
+      }, { status: 403 })
+    }
+
     const formData = await request.json()
-    
+
     // Format the data to match Prisma schema
     const personaData = {
       // Basic Information
@@ -49,15 +66,15 @@ export async function PUT(request: NextRequest) {
       create: { id: 1, ...personaData } // Force ID to be 1 for the first record
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      data: updatedProfile 
+    return NextResponse.json({
+      success: true,
+      data: updatedProfile
     }, { status: 200 })
   } catch (error) {
     console.error('Error updating persona profile:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to update persona profile' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to update persona profile'
     }, { status: 500 })
   }
 }
@@ -67,23 +84,23 @@ export async function GET() {
   try {
     // Get the first profile or null if none exists
     const profile = await prisma.personaProfile.findFirst()
-    
+
     if (!profile) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'No profile found' 
+      return NextResponse.json({
+        success: false,
+        error: 'No profile found'
       }, { status: 404 })
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      data: profile 
+    return NextResponse.json({
+      success: true,
+      data: profile
     }, { status: 200 })
   } catch (error) {
     console.error('Error retrieving persona profile:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to retrieve persona profile' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to retrieve persona profile'
     }, { status: 500 })
   }
 }

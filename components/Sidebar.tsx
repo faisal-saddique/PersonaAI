@@ -4,7 +4,21 @@ import cx from "../utils/cx"
 import { useCharacter } from "../contexts/CharacterContext"
 import { CharacterModal } from "./character-modal"
 import "./style.css"
-import { ChevronDown, ChevronUp, PanelLeftClose, PanelLeftOpen, MessageSquare, Star, Info, RefreshCw } from "lucide-react"
+import { useSession } from "next-auth/react"
+import SignOutButton from "./SignOutButton"
+import Link from "next/link"
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  PanelLeftClose, 
+  PanelLeftOpen, 
+  MessageSquare, 
+  Star, 
+  Info, 
+  RefreshCw,
+  Settings,
+  User
+} from "lucide-react"
 
 interface SidebarProps {
   isOpen: boolean
@@ -21,6 +35,9 @@ export default function Sidebar({ isOpen, onToggleSidebar, isDisabled = false }:
     error,
     refreshCharacters
   } = useCharacter()
+
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'admin'
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [dropdownFocus, setDropdownFocus] = useState(false)
@@ -82,6 +99,33 @@ export default function Sidebar({ isOpen, onToggleSidebar, isDisabled = false }:
       {/* If open, show content */}
       {isOpen && (
         <div className="px-4 pb-6 animate-fade-in">
+          {/* User information */}
+          {session?.user && (
+            <div className="mb-6 py-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User size={16} className="text-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{session.user.name || session.user.email}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {isAdmin ? 'Admin' : 'User'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <Link href="/admin" className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Admin settings">
+                      <Settings size={16} />
+                    </Link>
+                  )}
+                  <SignOutButton variant="icon" />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-2xl text-foreground gradient-text">Choose Your Character</h2>
             <button
@@ -308,5 +352,4 @@ export default function Sidebar({ isOpen, onToggleSidebar, isDisabled = false }:
         />
       )}
     </aside>
-  )
-}
+  )}

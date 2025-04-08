@@ -1,9 +1,9 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
+import crypto from 'crypto'
 
-import { prisma } from "./prisma";
+import prisma from "./prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -15,7 +15,6 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        console.log("Authorizing user...");
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password required");
         }
@@ -28,24 +27,53 @@ export const authOptions: NextAuthOptions = {
           throw new Error("No user found or password not set");
         }
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
+      // Replace the bcrypt.compare in the authorize function with:
+const isValid = crypto
+.createHash('sha256')
+.update(credentials.password + 'some-salt-value')
+.digest('hex') === user.password;
+        
         if (!isValid) {
           throw new Error("Invalid password");
         }
-        console.log("User authorized successfully.");
+        
         return user;
       },
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
-      console.log("Creating session for user:", user.id);
-      session.user!.id = user.id;    
+    async session({ session, token, user }) {
+      if (session.user) {
+        // Add the user ID to the session
+        session.user.id = user.id;
+        
+        // Add user role to the session
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { type: true }
+        });
+        
+        // Add user type/role to the session
+        if (dbUser) {
+          session.user.role = dbUser.type;
+        }
+      }
       return session;
     },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = user.type;
+      }
+      return token;
+    }
   },
-  debug: true
+  pages: {
+    signIn: '/', // We're handling the sign-in in a modal
+  },
+  session: {
+    strategy: "jwt",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
 };

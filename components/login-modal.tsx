@@ -3,7 +3,9 @@
 import type React from "react"
 import { useState } from "react"
 import { Lock, User } from "lucide-react"
-import { authenticateUser, type UserRole } from "../utils/users"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import type { UserRole } from "../utils/users"
 
 interface LoginModalProps {
   isOpen: boolean
@@ -12,35 +14,42 @@ interface LoginModalProps {
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin, requiredRole = "user" }) => {
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   if (!isOpen) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
-    // Simulate API call
-    setTimeout(() => {
-      const user = authenticateUser(username, password)
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      })
 
-      if (user) {
-        if (requiredRole === "admin" && user.role !== "admin") {
-          setError("You need admin privileges to access this area")
-          setIsLoading(false)
-          return
-        }
-
-        onLogin(true, user.role)
-      } else {
-        setError("Invalid username or password")
+      if (result?.error) {
+        setError(result.error)
         setIsLoading(false)
+        return
       }
-    }, 1000)
+
+      if (result?.ok) {
+        // We'll need to determine user role from the session
+        // For now, we'll use a basic role (this will be improved later)
+        onLogin(true, "user") // Default to 'user' role for now
+        router.refresh()
+      }
+    } catch (error) {
+      setError("An unexpected error occurred")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -57,20 +66,20 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin, requiredRole =
           {error && <div className="bg-red-500/10 text-red-500 p-3 rounded-lg text-sm">{error}</div>}
 
           <div className="space-y-2">
-            <label htmlFor="username" className="text-sm font-medium text-foreground block">
-              Username
+            <label htmlFor="email" className="text-sm font-medium text-foreground block">
+              Email
             </label>
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 <User size={18} />
               </div>
               <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="input pl-10"
-                placeholder="Enter your username"
+                placeholder="Enter your email"
                 required
               />
             </div>
@@ -101,11 +110,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin, requiredRole =
               {isLoading ? "Signing in..." : "Sign In"}
             </button>
           </div>
-
-          {/* <div className="text-center text-sm text-muted-foreground mt-4">
-            <p>Available accounts:</p>
-            <p className="font-medium text-foreground">User: john/1234 | Admin: admin/admin123</p>
-          </div> */}
         </form>
       </div>
     </div>
@@ -113,4 +117,3 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin, requiredRole =
 }
 
 export default LoginModal
-

@@ -3,6 +3,7 @@
 import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { type Message as MessageProps, useChat } from "@ai-sdk/react"
+import { useSession } from "next-auth/react"
 import Form from "../components/form"
 import Message from "../components/message"
 import cx from "../utils/cx"
@@ -23,12 +24,11 @@ interface HomeProps {
 export default function Home({
   selectedCharacterName,
   isSidebarOpen = false,
-  isLoggedIn = false,
-  userRole,
 }: HomeProps) {
   const formRef = useRef<HTMLFormElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { selectedCharacter } = useCharacter()
+  const { status } = useSession()
   const initialQuestions = selectedCharacter?.conversation_starters.starters || INITIAL_QUESTIONS
 
   const [streaming, setStreaming] = useState<boolean>(false)
@@ -64,7 +64,6 @@ PersonaAI is an advanced AI-powered platform that brings your favorite anime cha
   }
 
   useEffect(() => {
-    console.log(messages)
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
@@ -78,6 +77,9 @@ PersonaAI is an advanced AI-powered platform that brings your favorite anime cha
     },
     [handleSubmit],
   )
+
+  // Check if user is authenticated
+  const isAuthenticated = status === 'authenticated'
 
   return (
     <main
@@ -148,12 +150,12 @@ PersonaAI is an advanced AI-powered platform that brings your favorite anime cha
           ref={formRef}
           onSubmit={onSubmit}
           inputProps={{
-            disabled: streaming,
+            disabled: streaming || !isAuthenticated,
             value: input,
             onChange: handleInputChange,
           }}
           buttonProps={{
-            disabled: streaming,
+            disabled: streaming || !isAuthenticated,
           }}
         />
         <PoweredBy />
@@ -161,4 +163,3 @@ PersonaAI is an advanced AI-powered platform that brings your favorite anime cha
     </main>
   )
 }
-

@@ -34,13 +34,13 @@ export default function SidebarLayout({ children, requiredRole = "user" }: Sideb
       return;
     }
     
-    // User is authenticated
-    if (session?.user) {
+    // User is authenticated - HIDE the login modal
+    if (status === 'authenticated') {
       // For now we'll use a simple role determination
       // In a real app, you'd store the role in the session
-      const role = session.user.email?.includes('admin') ? 'admin' : 'user';
+      const role = session.user?.email?.includes('admin') ? 'admin' : 'user';
       setUserRole(role);
-      setShowLoginModal(false);
+      setShowLoginModal(false); // This ensures the modal is closed after authentication
     }
   }, [session, status, requiredRole]);
 
@@ -81,14 +81,16 @@ export default function SidebarLayout({ children, requiredRole = "user" }: Sideb
   const handleLogin = (success: boolean, role?: UserRole) => {
     if (success && role) {
       setUserRole(role)
-      setShowLoginModal(false)
+      setShowLoginModal(false) // Explicitly hide the modal on successful login
     }
   }
 
   // Check if user has required role
   const hasRequiredRole = userRole === requiredRole || (requiredRole === "user" && userRole === "admin")
   const isAuthenticated = status === 'authenticated'
-  const shouldShowLoginModal = showLoginModal || !isAuthenticated || !hasRequiredRole
+  
+  // Updated logic to ensure modal is hidden when authenticated
+  const shouldShowLoginModal = showLoginModal && (!isAuthenticated || !hasRequiredRole)
 
   return (
     <div className="relative min-h-screen md:flex">

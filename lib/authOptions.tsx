@@ -27,11 +27,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error("No user found or password not set");
         }
 
-      // Replace the bcrypt.compare in the authorize function with:
-const isValid = crypto
-.createHash('sha256')
-.update(credentials.password + 'some-salt-value')
-.digest('hex') === user.password;
+        // Replace the bcrypt.compare in the authorize function with:
+        const isValid = crypto
+          .createHash('sha256')
+          .update(credentials.password + 'some-salt-value')
+          .digest('hex') === user.password;
         
         if (!isValid) {
           throw new Error("Invalid password");
@@ -42,28 +42,26 @@ const isValid = crypto
     }),
   ],
   callbacks: {
-    async session({ session, token, user }) {
-      if (session.user) {
-        // Add the user ID to the session
-        session.user.id = user.id;
+    async session({ session, token }) {
+      if (session.user && token) {
+        // Add the user ID to the session from the token
+        session.user.id = token.id as string;
         
-        // Add user role to the session
+        // Add user role to the session from the token
+        session.user.role = token.role as any;
+      }
+      return session;
+    },
+    async jwt({ token, user, account }) {
+      // Initial sign in
+      if (user) {
+        token.id = user.id;
+        // Get user type from database
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
           select: { type: true }
         });
-        
-        // Add user type/role to the session
-        if (dbUser) {
-          session.user.role = dbUser.type;
-        }
-      }
-      return session;
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.type;
+        token.role = dbUser?.type || 'user';
       }
       return token;
     }
@@ -74,6 +72,6 @@ const isValid = crypto
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "YOUR_FALLBACK_SECRET",
   debug: process.env.NODE_ENV === "development",
 };

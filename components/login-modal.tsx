@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Lock, User } from "lucide-react"
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import type { UserRole } from "../utils/users"
 
@@ -19,6 +19,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin, requiredRole =
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { status, data: session } = useSession()
+
+  // Effect to handle session changes
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      // Determine role from session
+      const role = session.user.email?.includes('admin') ? 'admin' as UserRole : 'user' as UserRole
+      onLogin(true, role)
+    }
+  }, [status, session, onLogin])
 
   if (!isOpen) return null
 
@@ -41,9 +51,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onLogin, requiredRole =
       }
 
       if (result?.ok) {
-        // We'll need to determine user role from the session
-        // For now, we'll use a basic role (this will be improved later)
-        onLogin(true, "user") // Default to 'user' role for now
+        // The session will be updated by the useEffect above
         router.refresh()
       }
     } catch (error) {

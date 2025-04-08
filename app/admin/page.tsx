@@ -3,8 +3,9 @@
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import PersonaProfileForm from "./PersonaProfileForm"
 import { Shield, AlertTriangle } from "lucide-react"
+import AdminTabs from "@/components/adminTabs"
+
 
 export default function AdminPage() {
   const { data: session, status } = useSession()
@@ -58,7 +59,7 @@ export default function AdminPage() {
     )
   }
 
-  // If admin, show the admin form
+  // If admin, show the admin panel with tabs
   return (
     <div>
       <div className="max-w-4xl mx-auto pt-6 mb-6 flex items-center justify-center gap-2">
@@ -67,7 +68,7 @@ export default function AdminPage() {
           Admin Area - Authenticated as {session.user?.email}
         </span>
       </div>
-      <PersonaProfileForm />
+      <AdminTabs />
     </div>
   )
 }

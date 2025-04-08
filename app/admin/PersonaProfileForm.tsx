@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   InputField,
   TextareaField,
@@ -13,6 +12,7 @@ import {
 } from "../../components/form-components"
 
 interface FormData {
+  id?: number
   // Basic Information
   fullName: string
   age: string
@@ -90,11 +90,45 @@ const experienceLevelOptions = [
   { value: "expert", label: "Expert" },
 ]
 
-export default function PersonaProfileForm() {
+interface PersonaProfileFormProps {
+  personaId: number | null
+  onComplete: () => void
+}
+
+export default function PersonaProfileForm({ personaId, onComplete }: PersonaProfileFormProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Fetch persona data if editing
+  useEffect(() => {
+    if (personaId !== null) {
+      fetchPersona(personaId)
+    }
+  }, [personaId])
+
+  const fetchPersona = async (id: number) => {
+    try {
+      setIsLoading(true)
+      const response = await fetch(`/api/admin?resource=persona&id=${id}`)
+      const result = await response.json()
+
+      if (result.success) {
+        // Convert the data to match our form structure
+        setFormData({
+          ...result.data,
+          age: result.data.age.toString(),
+        })
+      } else {
+        console.error('Error fetching persona:', result.error)
+      }
+    } catch (error) {
+      console.error('Error fetching persona:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const updateFormData = (field: keyof FormData, value: string | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -150,18 +184,25 @@ export default function PersonaProfileForm() {
       setIsSubmitting(true)
   
       try {
+        const requestData = {
+          action: 'updatePersona',
+          ...formData,
+          // Include the ID if editing an existing persona
+          ...(personaId !== null && { id: personaId })
+        }
+
         const response = await fetch('/api/admin', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(requestData),
         })
   
         const result = await response.json()
         
         if (result.success) {
-          setIsSubmitted(true)
+          onComplete()
         } else {
           // Handle error
           console.error('Error submitting form:', result.error)
@@ -183,31 +224,25 @@ export default function PersonaProfileForm() {
     }
   }
 
-  if (isSubmitted) {
+  // Show loading state
+  if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto p-6 bg-card rounded-xl shadow-md mt-8 text-center">
-        <h2 className="text-2xl font-bold text-foreground mb-4">Form Submitted Successfully!</h2>
-        <p className="text-muted-foreground mb-6">
-          Thank you for submitting your persona profile. We have received your information.
-        </p>
-        <FormButton
-          onClick={() => {
-            setFormData(initialFormData)
-            setIsSubmitted(false)
-          }}
-        >
-          Submit Another Profile
-        </FormButton>
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl md:text-3xl font-bold gradient-text mb-4">Persona Profile Form</h1>
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-6 text-center">
+        <h2 className="text-2xl md:text-3xl font-bold gradient-text mb-4">
+          {personaId !== null ? "Edit Persona Profile" : "Create New Persona Profile"}
+        </h2>
         <p className="text-muted-foreground">
-          Complete the form below to create a comprehensive persona profile. Fields marked with * are required.
+          {personaId !== null 
+            ? "Update the information for this persona profile." 
+            : "Complete the form below to create a comprehensive persona profile. Fields marked with * are required."}
         </p>
       </div>
 
@@ -443,7 +478,7 @@ export default function PersonaProfileForm() {
         {/* Submit Button */}
         <div className="flex justify-center pt-4">
           <FormButton type="submit" isLoading={isSubmitting} className="px-8 py-3 text-base">
-            Submit Persona Profile
+            {personaId !== null ? "Update Persona Profile" : "Submit Persona Profile"}
           </FormButton>
         </div>
       </form>

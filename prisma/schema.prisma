@@ -19,8 +19,8 @@ model User {
   accounts          Account[]
   Authenticator     Authenticator[]
   sessions          Session[]
-  avatar    String?
-  type      UserType @default(user)
+  avatar            String?
+  type              UserType            @default(user)
 }
 
 model Account {
@@ -117,4 +117,26 @@ model PersonaProfile {
   conversationStarter2 String?
   conversationStarter3 String?
   conversationStarter4 String?
+}
+
+// New models for admin settings
+
+model ModelConfig {
+  id                Int        @id @default(autoincrement())
+  name              String     // Display name for the model
+  provider          String     // "openai", "anthropic", etc.
+  modelId           String     // Actual model identifier (e.g., "gpt-4o")
+  isDefault         Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  @@unique([provider, modelId])
+}
+
+model SystemPrompt {
+  id                Int        @id @default(autoincrement())
+  content           String     @db.Text
+  isActive          Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 }
